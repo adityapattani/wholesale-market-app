@@ -1,0 +1,29 @@
+variables:
+  DOCKER_REGISTRY: 381491971380.dkr.ecr.us-east-1.amazonaws.com
+  DOCKER_HOST: tcp://docker:2375
+  DOCKER_TLS_CERTDIR: ""
+
+publish:
+  tags: ["aws-runner"]
+  image:
+    name: amazon/aws-cli
+    entrypoint: [""]
+  services:
+    - docker:dind
+  before_script:
+    - amazon-linux-extras install docker
+    - aws --version
+    - docker --version
+    - docker info
+    - aws configure set aws_access_key_id $AWS_ACCESS_KEY_ID
+    - aws configure set aws_secret_access_key $AWS_SECRET_ACCESS_KEY
+    - aws configure set region $AWS_REGION
+    - aws configure set aws_session_token $AWS_SESSION_TOKEN
+  script:
+    - cd backend
+    - docker build -t $DOCKER_REGISTRY/csci5409-ta .
+    - aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin $DOCKER_REGISTRY
+    - docker push $DOCKER_REGISTRY/csci5409-ta
+    - aws ecs update-service --cluster csci5409-cluster-api --service csci5409-node-api-service --force-new-deployment
+  only:
+    - main
